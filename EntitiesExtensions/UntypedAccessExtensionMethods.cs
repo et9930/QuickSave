@@ -30,6 +30,7 @@ namespace QuickSave
         public static unsafe EnabledMask GetEnabledMask(this in ArchetypeChunk archetypeChunk, ref DynamicComponentTypeHandle chunkComponentTypeHandle)
         {
             var m_Chunk = archetypeChunk.m_Chunk;
+            var m_Archetype = archetypeChunk.Archetype.Archetype;
             ChunkDataUtility.GetIndexInTypeArray(archetypeChunk.Archetype.Archetype, chunkComponentTypeHandle.m_TypeIndex, ref chunkComponentTypeHandle.m_TypeLookupCache);
             var indexInArchetypeTypeArray = chunkComponentTypeHandle.m_TypeLookupCache;
             
@@ -54,8 +55,8 @@ namespace QuickSave
             }
             int* ptrChunkDisabledCount = default;
             var ptr = (chunkComponentTypeHandle.IsReadOnly)
-                ? ChunkDataUtility.GetEnabledRefRO(m_Chunk, indexInArchetypeTypeArray).Ptr
-                : ChunkDataUtility.GetEnabledRefRW(m_Chunk, indexInArchetypeTypeArray,
+                ? ChunkDataUtility.GetEnabledRefRO(m_Chunk, m_Archetype, indexInArchetypeTypeArray).Ptr
+                : ChunkDataUtility.GetEnabledRefRW(m_Chunk, m_Archetype, indexInArchetypeTypeArray,
                     chunkComponentTypeHandle.GlobalSystemVersion, out ptrChunkDisabledCount).Ptr;
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
             var result = new EnabledMask(new SafeBitRef(ptr, 0, chunkComponentTypeHandle.m_Safety0), ptrChunkDisabledCount);
@@ -73,8 +74,8 @@ namespace QuickSave
             AtomicSafetyHandle.CheckReadAndThrow(chunkComponentType.m_Safety0);
 #endif
             var chunk = archetypeChunk.m_Chunk;
-            var archetype = chunk->Archetype;
-            ChunkDataUtility.GetIndexInTypeArray(chunk->Archetype, chunkComponentType.m_TypeIndex, ref chunkComponentType.m_TypeLookupCache);
+            var archetype = archetypeChunk.Archetype.Archetype;
+            ChunkDataUtility.GetIndexInTypeArray(archetype, chunkComponentType.m_TypeIndex, ref chunkComponentType.m_TypeLookupCache);
             var typeIndexInArchetype = chunkComponentType.m_TypeLookupCache;
             if (typeIndexInArchetype == -1)
             {
@@ -94,10 +95,11 @@ namespace QuickSave
             var byteLen = length * typeSize;
             // var outTypeSize = 1;
             // var outLength = byteLen / outTypeSize;
-            
+
             byte* ptr = (chunkComponentType.IsReadOnly)
-                ? ChunkDataUtility.GetComponentDataRO(chunk, 0, typeIndexInArchetype)
-                : ChunkDataUtility.GetComponentDataRW(chunk, 0, typeIndexInArchetype, chunkComponentType.GlobalSystemVersion);
+                ? ChunkDataUtility.GetComponentDataRO(chunk, archetype, 0, typeIndexInArchetype)
+                : ChunkDataUtility.GetComponentDataRW(chunk, archetype, 0, typeIndexInArchetype,
+                    chunkComponentType.GlobalSystemVersion);
             
             var result = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<byte>(ptr, byteLen, Allocator.None);
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
